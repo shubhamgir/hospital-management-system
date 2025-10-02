@@ -1,0 +1,193 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX 100
+
+// Patient structure
+typedef struct {
+    int id;
+    char name[50];
+    int age;
+    char problem[50];
+    int severity;   // 0 for normal, 1-10 for emergency
+} Patient;
+
+// Normal Queue (FIFO)
+typedef struct {
+    Patient arr[MAX];
+    int front, rear;
+} Queue;
+
+// Priority Queue (Emergency)
+typedef struct {
+    Patient arr[MAX];
+    int size;
+} PriorityQueue;
+
+// Queue functions
+void initQueue(Queue *q) {
+    q->front = q->rear = -1;
+}
+
+int isQueueEmpty(Queue *q) {
+    return q->front == -1;
+}
+
+void enqueue(Queue *q, Patient p) {
+    if (q->rear == MAX - 1) {
+        printf("Normal Queue is full!\n");
+        return;
+    }
+    if (q->front == -1) q->front = 0;
+    q->arr[++q->rear] = p;
+}
+
+Patient dequeue(Queue *q) {
+    Patient p = q->arr[q->front];
+    if (q->front == q->rear)
+        q->front = q->rear = -1;
+    else
+        q->front++;
+    return p;
+}
+
+// Priority Queue functions
+void initPriorityQueue(PriorityQueue *pq) {
+    pq->size = 0;
+}
+
+int isPQEmpty(PriorityQueue *pq) {
+    return pq->size == 0;
+}
+
+void insertPQ(PriorityQueue *pq, Patient p) {
+    if (pq->size == MAX) {
+        printf("Emergency Queue is full!\n");
+        return;
+    }
+    pq->arr[pq->size++] = p;
+
+    // Sort by severity, then age (descending order)
+    for (int i = 0; i < pq->size - 1; i++) {
+        for (int j = i + 1; j < pq->size; j++) {
+            if (pq->arr[i].severity < pq->arr[j].severity ||
+               (pq->arr[i].severity == pq->arr[j].severity && pq->arr[i].age < pq->arr[j].age)) {
+                Patient temp = pq->arr[i];
+                pq->arr[i] = pq->arr[j];
+                pq->arr[j] = temp;
+            }
+        }
+    }
+}
+
+Patient removePQ(PriorityQueue *pq) {
+    Patient p = pq->arr[0];
+    for (int i = 1; i < pq->size; i++) {
+        pq->arr[i - 1] = pq->arr[i];
+    }
+    pq->size--;
+    return p;
+}
+
+// Display patients
+void displayPatients(Queue *q, PriorityQueue *pq) {
+    printf("\n--- Waiting Patients ---\n");
+
+    if (!isPQEmpty(pq)) {
+        printf("Emergency Queue:\n");
+        for (int i = 0; i < pq->size; i++) {
+            printf("ID: %d, Name: %s, Age: %d, Problem: %s, Severity: %d\n",
+                   pq->arr[i].id, pq->arr[i].name, pq->arr[i].age,
+                   pq->arr[i].problem, pq->arr[i].severity);
+        }
+    } else {
+        printf("Emergency Queue: Empty\n");
+    }
+
+    if (!isQueueEmpty(q)) {
+        printf("Normal Queue:\n");
+        for (int i = q->front; i <= q->rear; i++) {
+            printf("ID: %d, Name: %s, Age: %d, Problem: %s\n",
+                   q->arr[i].id, q->arr[i].name, q->arr[i].age,
+                   q->arr[i].problem);
+        }
+    } else {
+        printf("Normal Queue: Empty\n");
+    }
+    printf("-------------------------\n");
+}
+
+// Doctor attends patient
+void attendPatient(Queue *q, PriorityQueue *pq) {
+    if (!isPQEmpty(pq)) {
+        Patient p = removePQ(pq);
+        printf("Doctor attending EMERGENCY patient: %s (Severity %d)\n", p.name, p.severity);
+    } else if (!isQueueEmpty(q)) {
+        Patient p = dequeue(q);
+        printf("Doctor attending NORMAL patient: %s\n", p.name);
+    } else {
+        printf("No patients waiting!\n");
+    }
+}
+
+// Main function
+int main() {
+    Queue normalQueue;
+    PriorityQueue emergencyQueue;
+    initQueue(&normalQueue);
+    initPriorityQueue(&emergencyQueue);
+
+    int choice, id = 1;
+
+    while (1) {
+        printf("\nHospital Patient Management System\n");
+        printf("1. Add Patient\n");
+        printf("2. Doctor Attend Patient\n");
+        printf("3. Display Waiting Patients\n");
+        printf("4. Exit\n");
+        printf("Enter choice: ");
+        scanf("%d", &choice);
+
+        if (choice == 1) {
+            Patient p;
+            p.id = id++;
+            printf("Enter name: ");
+            scanf("%s", p.name);
+            printf("Enter age: ");
+            scanf("%d", &p.age);
+            printf("Enter problem type: ");
+            scanf("%s", p.problem);
+
+            int type;
+            printf("Is this an emergency? (1=Yes, 0=No): ");
+            scanf("%d", &type);
+
+            if (type == 1) {
+                printf("Enter severity (1-10): ");
+                scanf("%d", &p.severity);
+                insertPQ(&emergencyQueue, p);
+                printf("Emergency patient added: %s\n", p.name);
+            } else {
+                p.severity = 0;
+                enqueue(&normalQueue, p);
+                printf("Normal patient added: %s\n", p.name);
+            }
+        }
+        else if (choice == 2) {
+            attendPatient(&normalQueue, &emergencyQueue);
+        }
+        else if (choice == 3) {
+            displayPatients(&normalQueue, &emergencyQueue);
+        }
+        else if (choice == 4) {
+            printf("Exiting system...\n");
+            break;
+        }
+        else {
+            printf("Invalid choice. Try again.\n");
+        }
+    }
+
+    return 0;
+}
